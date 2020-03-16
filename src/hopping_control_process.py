@@ -9,7 +9,7 @@ path.append('./3rdparty/casadi-v3.5.1')
 from casadi import *
 
 path.append('./src')
-from height_controller_mpc import HeightControllerMPC
+from hopping_controller_mpc import HoppingControllerMPC
 
 
 print('Program started')
@@ -28,10 +28,10 @@ print("Connection success!")
 
 
 RAD2DEG = 180 / math.pi   # 常数，弧度转度数
-tstep = 0.01             # 定义仿真步长
+tstep = 0.05             # 定义仿真步长
 
 # 设置仿真步长，为了保持API端与V-rep端相同步长
-vrep.simxSetFloatingParameter(clientID, vrep.sim_floatparam_simulation_time_step, tstep, vrep.simx_opmode_oneshot)
+vrep.simxSetFloatingParameter(clientID, vrep.sim_floatparam_simulation_time_step, tstep, vrep.simx_opmode_blocking)
 # 然后打开同步模式
 vrep.simxSynchronous(clientID, True) 
 vrep.simxStartSimulation(clientID, vrep.simx_opmode_oneshot)
@@ -54,8 +54,8 @@ lastCmdTime=vrep.simxGetLastCmdTime(clientID)  # 记录当前时间
 
 
 N = 20
-dT = 0.1
-controller = HeightControllerMPC(N, dT)
+dT = 0.05
+controller = HoppingControllerMPC(N, dT)
 
 p_target = [1,0]
 x_init = [0,0]
@@ -63,12 +63,19 @@ u_init = [0]
 
 #用于测试的计数
 index = 0
+iter0 = 0
 
 # 开始仿真
 while vrep.simxGetConnectionId(clientID) != -1:
     currCmdTime=vrep.simxGetLastCmdTime(clientID)  # 记录当前时间
     dt = currCmdTime - lastCmdTime # 记录时间间隔，用于控制
    
+    # index += 1
+    # if index >= 5:
+    #     iter0 += 1
+    #     index = 0
+    iter0 += 1
+
     # ***
     _, base_pos = vrep.simxGetObjectPosition(clientID, baseHandle, -1, vrep.simx_opmode_streaming)
     _, jointConfig = vrep.simxGetJointPosition(clientID, jointHandle, vrep.simx_opmode_streaming)
@@ -83,7 +90,7 @@ while vrep.simxGetConnectionId(clientID) != -1:
     print(x_init)
 
     controller.prob_describe()
-    controller.update(p_target,x_init,u_init)
+    controller.update(p_target,x_init,u_init,iter0)
 
     sol = controller.sol
     X = controller.X
@@ -104,14 +111,6 @@ while vrep.simxGetConnectionId(clientID) != -1:
     
     vrep.simxSetJointTargetVelocity(clientID, jointHandle, set_velocity, vrep.simx_opmode_oneshot)
     vrep.simxSetJointForce(clientID, jointHandle, set_force, vrep.simx_opmode_oneshot)
-
-    #vrep.simxSetJointForce(clientID,jointHandle,set_force,vrep.simx_opmode_oneshot);
-
-    # vrep.simxSetJointTargetPosition(clientID, jointHandle, 100, vrep.simx_opmode_oneshot)
-    # vrep.simxSetJointTargetPosition(clientID, jointHandle[1], 5/RAD2DEG, vrep.simx_opmode_oneshot)
-
-    # vrep.simxSetJointTargetVelocity(clientID, jointHandle[2], 500/RAD2DEG, vrep.simx_opmode_oneshot)
-    # vrep.simxSetJointTargetVelocity(clientID, jointHandle[3], 500/RAD2DEG, vrep.simx_opmode_oneshot)
     
     vrep.simxPauseCommunication(clientID, False)
 

@@ -9,7 +9,7 @@ from pylab import plot, step, figure, legend, show, spy
 
 #import matplotlib.pyplot as plt
 
-class HoppingControllerMPC:
+class HeightControllerMPC:
     def __init__(self, N, dT):
         self.N = N
         self.dT = dT
@@ -31,12 +31,13 @@ class HoppingControllerMPC:
         
         # ---- decision variables ---------
         X = opti.variable(2,N+1) # state trajectory
-        # height = X[0,:]
-        # velocity = X[1,:]
+        height = X[0,:]
+        velocity = X[1,:]
         U = opti.variable(1,N)   # control trajectory (throttle)
 
         # 参数
         P = opti.parameter(2,N)   # 目标位置参数
+
 
         for k in range(N):
             x_next = X[:,k] + dT*f(X[:,k], U[:,k])
@@ -75,7 +76,7 @@ class HoppingControllerMPC:
         self.opti = opti
 
 
-    def update(self,p_target,x_init,u_init,iter0):
+    def update(self,p_target,x_init,u_init):
         N = self.N # number of control intervals
         dT = self.dT
         X = self.X
@@ -83,9 +84,6 @@ class HoppingControllerMPC:
         P = self.P
         opti = self.opti
         
-        for k in range(N):
-            if (k+iter0)%12 >= 6:
-                opti.subject_to(U[:,k]==0)
         # ---- boundary conditions --------
         #opti.subject_to(X[:,0]==[0,0,0])   # start at position 0 ...
         opti.subject_to(X[:,0]==x_init)
@@ -136,15 +134,14 @@ class HoppingControllerMPC:
 
 if __name__ == '__main__':
     
-    tracker = HoppingControllerMPC(20, 0.1)
-    tracker.prob_describe()
+    controller = HeightControllerMPC(20, 0.1)
+    controller.prob_describe()
 
     p_target = [1,0]
     x_init = [0,0]
     u_init = [0]
-    iter0 = 0
-    tracker.update(p_target,x_init,u_init,iter0)
-    tracker.showfig()
+    controller.update(p_target,x_init,u_init)
+    controller.showfig()
     show()
 
 
